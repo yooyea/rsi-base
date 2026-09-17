@@ -1,0 +1,29 @@
+name: Documentation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  documentation:
+    name: Documentation checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Test the documentation checker
+        run: python3 -m unittest discover -s tests -v
+      - name: Check document paths and structure
+        run: python3 scripts/check_docs.py
+      - name: Ensure checks did not modify repository content
+        run: |
+          status="$(git status --porcelain=v1 --untracked-files=normal)"
+          if [ -n "$status" ]; then
+            printf '%s\n' "$status"
+            exit 1
+          fi
