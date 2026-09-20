@@ -1,3 +1,5 @@
 # Isolated gate probe
 
-[Deliberately missing](missing-gate-target.md)
+[Repaired entry](../SKILL.md)
+
+This file exists only on the disposable verification branch.
