@@ -24,7 +24,8 @@ def prose_lines(text: str):
             token = marker.group(1)
             if fence is None:
                 fence = token
-            elif token[0] == fence[0] and len(token) >= len(fence):
+            elif (token[0] == fence[0] and len(token) >= len(fence)
+                  and not line[marker.end():].strip()):
                 fence = None
             continue
         if fence is None:

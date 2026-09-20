@@ -82,6 +82,19 @@ class DocumentationChecks(unittest.TestCase):
             entry.write("\n[Self](example.md)\n")
         self.assertEqual(validate(self.root), [])
 
+    def test_nonclosing_fence_keeps_example_links_hidden(self):
+        self.write("README.md", "# Purpose\n\n```md\n```not-a-closing-fence\n"
+                   "[Example](missing.md)\n```\n")
+        self.assertEqual(validate(self.root), [])
+
+    def test_nonclosing_fence_cannot_satisfy_rule_heading(self):
+        text = "# Rule\n\n" + "\n\n".join(
+            f"## {h}\n\nContent" for h in HEADINGS if h != "工程落实"
+        )
+        text += "\n\n```md\n```not-a-closing-fence\n## 工程落实\n\nExample only\n```\n"
+        self.write(self.rule, text)
+        self.assertTrue(any("missing section 工程落实" in e for e in validate(self.root)))
+
     def test_no_rules_fails(self):
         (self.root / self.rule).unlink()
         self.assertIn("No engineering rules found", validate(self.root))
