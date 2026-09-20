@@ -95,6 +95,30 @@ class DocumentationChecks(unittest.TestCase):
         self.write(self.rule, text)
         self.assertTrue(any("missing section 工程落实" in e for e in validate(self.root)))
 
+    def test_four_space_pseudo_fence_does_not_hide_broken_link(self):
+        self.write("README.md", "# Purpose\n\n    ```md\n\n[Broken](missing.md)\n")
+        self.assertTrue(any("missing local target" in e for e in validate(self.root)))
+
+    def test_four_space_pseudo_fence_does_not_hide_rule_headings(self):
+        text = "# Rule\n\n    ```md\n\n" + "\n\n".join(
+            f"## {h}\n\nContent" for h in HEADINGS
+        )
+        self.write(self.rule, text)
+        self.assertEqual(validate(self.root), [])
+
+    def test_four_space_delimiter_cannot_close_real_fence(self):
+        self.write("README.md", "# Purpose\n\n```md\n    ```\n"
+                   "[Example](missing.md)\n```\n")
+        self.assertEqual(validate(self.root), [])
+
+    def test_zero_to_three_space_fences_still_work(self):
+        for indent in range(4):
+            with self.subTest(indent=indent):
+                padding = " " * indent
+                self.write("README.md", f"# Purpose\n\n{padding}```md\n"
+                           f"[Example](missing.md)\n{padding}``` \n")
+                self.assertEqual(validate(self.root), [])
+
     def test_no_rules_fails(self):
         (self.root / self.rule).unlink()
         self.assertIn("No engineering rules found", validate(self.root))

@@ -19,7 +19,7 @@ def prose_lines(text: str):
     """Ignore fenced examples and single-backtick inline examples."""
     fence = None
     for number, line in enumerate(text.splitlines(), 1):
-        marker = re.match(r"^\s*(`{3,}|~{3,})", line)
+        marker = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
         if marker:
             token = marker.group(1)
             if fence is None:
