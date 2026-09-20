@@ -29,6 +29,8 @@ description: 指导项目通过可靠的工程化保障自我迭代。用于建�
 
 [Codex 实践来源](references/codex-pr-gates.md)：需要依据或取舍时查看，不必每次任务加载。
 
+[rsi-base 自举](docs/self-bootstrap.md)：仅在维护本仓库或需要自举示例时读取。
+
 ## 边界
 
 遵守目标项目当前目标、协议与授权。无权访问或执行的检查明确标为未验证，不能以模拟输出替代。

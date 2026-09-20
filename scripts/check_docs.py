@@ -3,6 +3,7 @@
 
 This is not a general Markdown parser. External URLs, anchor existence,
 reference-style links and semantic correctness are outside its scope.
+Rule sections must contain prose, and every rule must be reachable from SKILL.md.
 """
 from __future__ import annotations
 
@@ -37,7 +38,9 @@ def validate(root: Path) -> list[str]:
         if not (root / required).is_file():
             errors.append(f"Missing entry document: {required}")
     rule_root = root / "chapters/engineering/rules"
-    if not any(rule_root.glob("*/*.md")):
+    graph: dict[Path, set[Path]] = {}
+    rules = set(rule_root.rglob("*.md"))
+    if not rules:
         errors.append("No engineering rules found")
     for path in sorted(root.rglob("*.md")):
         relative = path.relative_to(root)
@@ -61,12 +64,24 @@ def validate(root: Path) -> list[str]:
                 for field in ("name", "description"):
                     if not re.search(rf"^{field}:[ \t]*\S[^\n]*$", front.group(1), re.M):
                         errors.append(f"SKILL.md: missing {field}")
+        graph[path] = set()
         prose = list(prose_lines(text))
         if path.is_relative_to(rule_root):
             present = {line.strip() for _, line in prose}
             for heading in HEADINGS:
                 if f"## {heading}" not in present:
                     errors.append(f"{relative}: missing section {heading}")
+            section = None
+            bodies: dict[str, list[str]] = {}
+            for _, line in prose:
+                if line.startswith("## "):
+                    section = line[3:].strip()
+                    bodies.setdefault(section, [])
+                elif section is not None and line.strip() and not line.lstrip().startswith("#"):
+                    bodies[section].append(line)
+            for heading in HEADINGS:
+                if f"## {heading}" in present and not bodies.get(heading):
+                    errors.append(f"{relative}: empty section {heading}")
         for number, line in prose:
             for match in LINK.finditer(line):
                 href = match.group(1).strip().strip("<>")
@@ -78,6 +93,17 @@ def validate(root: Path) -> list[str]:
                     errors.append(f"{relative}:{number}: link escapes repository: {href}")
                 elif not target.exists():
                     errors.append(f"{relative}:{number}: missing local target: {href}")
+                elif target.is_file() and target.suffix == ".md":
+                    graph[path].add(target)
+    reachable: set[Path] = set()
+    pending = [root / "SKILL.md"]
+    while pending:
+        current = pending.pop()
+        if current not in reachable:
+            reachable.add(current)
+            pending.extend(graph.get(current, ()))
+    for path in sorted(rules - reachable):
+        errors.append(f"{path.relative_to(root)}: rule is not reachable from SKILL.md")
     return errors
 
 

@@ -14,6 +14,8 @@ class DocumentationChecks(unittest.TestCase):
         self.write("AGENTS.md", "# Work\n")
         self.write("SKILL.md", "---\nname: rsi-base\ndescription: Guidance\n---\n\n# Entry\n")
         self.rule = "chapters/engineering/rules/test/example.md"
+        with (self.root / "SKILL.md").open("a") as entry:
+            entry.write(f"\n[Rule]({self.rule})\n")
         self.write(self.rule, "# Rule\n\n" + "\n\n".join(f"## {h}\n\nContent" for h in HEADINGS))
 
     def write(self, name: str, text: str):
@@ -50,6 +52,35 @@ class DocumentationChecks(unittest.TestCase):
         text = (self.root / self.rule).read_text(encoding="utf-8")
         self.write(self.rule, text.replace("## 工程落实", "```md\n## 工程落实\n```"))
         self.assertTrue(any("missing section 工程落实" in item for item in validate(self.root)))
+
+    def test_empty_section_fails(self):
+        text = (self.root / self.rule).read_text()
+        self.write(self.rule, text.replace("## 工程落实\n\nContent", "## 工程落实\n"))
+        self.assertTrue(any("empty section 工程落实" in e for e in validate(self.root)))
+
+    def test_unlinked_rule_fails_then_indexed_rule_passes(self):
+        new_rule = "chapters/engineering/rules/test/new.md"
+        self.write(new_rule, (self.root / self.rule).read_text())
+        self.assertTrue(any("new.md: rule is not reachable" in e for e in validate(self.root)))
+        with (self.root / self.rule).open("a") as entry:
+            entry.write("\n[Next](new.md)\n")
+        self.assertEqual(validate(self.root), [])
+
+    def test_nested_rule_is_not_outside_coverage(self):
+        self.write("chapters/engineering/rules/test/nested/new.md", "# Incomplete\n")
+        errors = validate(self.root)
+        self.assertTrue(any("nested/new.md: missing section" in e for e in errors))
+        self.assertTrue(any("nested/new.md: rule is not reachable" in e for e in errors))
+
+    def test_fenced_link_cannot_make_rule_reachable(self):
+        self.write("SKILL.md", "---\nname: rsi-base\ndescription: Guidance\n---\n"
+                   f"```md\n[Rule]({self.rule})\n```\n")
+        self.assertTrue(any("not reachable" in e for e in validate(self.root)))
+
+    def test_navigation_cycle_terminates(self):
+        with (self.root / self.rule).open("a") as entry:
+            entry.write("\n[Self](example.md)\n")
+        self.assertEqual(validate(self.root), [])
 
     def test_no_rules_fails(self):
         (self.root / self.rule).unlink()
